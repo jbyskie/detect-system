@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - Fruit Detection App{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <div class="card shadow">
+            <div class="card-body py-5">
+                <h1 class="display-4 mb-4">Welcome to Fruit Detection</h1>
+                <p class="lead mb-4">
+                    Upload images of fruits to detect their type and ripeness using advanced AI technology.
+                </p>
+                
+                {% if current_user.is_authenticated %}
+                    <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+                        <a href="{{ url_for('detect') }}" class="btn btn-primary btn-lg px-4 gap-3">Start Detecting</a>
+                        <a href="{{ url_for('history') }}" class="btn btn-outline-primary btn-lg px-4">View History</a>
+                    </div>
+                {% else %}
+                    <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+                        <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg px-4 gap-3">Login</a>
+                        <a href="{{ url_for('register') }}" class="btn btn-outline-primary btn-lg px-4">Register</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="row mt-5">
+            <div class="col-md-4">
+                <div class="card shadow h-100">
+                    <div class="card-body text-center">
+                        <h3 class="h5 mb-3">Easy to Use</h3>
+                        <p class="text-muted">Simply upload an image and get instant results about the fruit's type and ripeness.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow h-100">
+                    <div class="card-body text-center">
+                        <h3 class="h5 mb-3">Accurate Results</h3>
+                        <p class="text-muted">Powered by advanced AI technology for precise fruit detection and ripeness analysis.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow h-100">
+                    <div class="card-body text-center">
+                        <h3 class="h5 mb-3">Track History</h3>
+                        <p class="text-muted">Keep track of all your detections and access them anytime from your history.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

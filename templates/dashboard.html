@@ -1,0 +1,641 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Fruit Detection App{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="welcome-card card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <div class="welcome-icon me-3">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div>
+                                <h2 class="card-title mb-1">Welcome back, {{ current_user.username }}!</h2>
+                                <p class="card-text text-muted">Here's your detection overview and statistics</p>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="{{ url_for('export_dashboard_summary') }}" class="btn btn-outline-light">
+                                <i class="fas fa-download me-2"></i>Export Summary
+                            </a>
+                            <a href="{{ url_for('export_history') }}" class="btn btn-outline-light">
+                                <i class="fas fa-file-excel me-2"></i>Export History
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards Row -->
+    <div class="row mb-4">
+        <!-- Total Detections Card -->
+        <div class="col-lg-6 mb-4">
+            <div class="stat-card card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h5 class="card-title text-muted mb-1">Total Detections</h5>
+                            <h2 class="stat-number mb-0" id="total-detection-number">{{ month_detections }}</h2>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-microscope"></i>
+                        </div>
+                    </div>
+                    <!-- Time Filter Toggles -->
+                    <div class="time-filters mb-3">
+                        <input type="radio" class="btn-check" name="timeFilter" id="today" checked>
+                        <label class="btn btn-outline-primary" for="today">
+                            <i class="fas fa-calendar-day me-1"></i>Today
+                            <span class="badge bg-primary ms-1">{{ today_detections }}</span>
+                        </label>
+                        <input type="radio" class="btn-check" name="timeFilter" id="week">
+                        <label class="btn btn-outline-primary" for="week">
+                            <i class="fas fa-calendar-week me-1"></i>Week
+                            <span class="badge bg-primary ms-1">{{ week_detections }}</span>
+                        </label>
+                        <input type="radio" class="btn-check" name="timeFilter" id="month">
+                        <label class="btn btn-outline-primary" for="month">
+                            <i class="fas fa-calendar-alt me-1"></i>Month
+                            <span class="badge bg-primary ms-1">{{ month_detections }}</span>
+                        </label>
+                    </div>
+                    <!-- Detection Total Doughnut Chart (dynamic by period) -->
+                    <div class="my-3">
+                        <h6 class="text-center text-muted mb-2">Total Detections (<span id="pie-period-label">This Month</span>)</h6>
+                        <div class="d-flex justify-content-center">
+                            <canvas id="totalDoughnutChart" height="180" width="180" style="max-width:200px;max-height:200px;"></canvas>
+                        </div>
+                    </div>
+                    <!-- Progress Bar -->
+                    <div class="progress mb-2" style="height: 8px;">
+                        <div class="progress-bar" role="progressbar" style="width: 75%;" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <small class="text-muted">75% of monthly goal achieved</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Most Common Objects Card -->
+        <div class="col-lg-6 mb-4">
+            <div class="stat-card card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="card-title text-muted mb-1">Detection Stats</h5>
+                        </div>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #8e44ad 0%, #6c3483 100%);">
+                            <i class="fas fa-apple-alt"></i>
+                        </div>
+                    </div>
+                    <div class="row text-center mb-3">
+                        <div class="col-6">
+                            <div class="py-2">
+                                <span class="badge bg-success" style="font-size: 1.1rem; padding: 0.5em 1.2em;">
+                                    <i class="fas fa-circle me-1"></i>Ripe
+                                </span>
+                                <div class="fw-bold mt-1" style="font-size: 1.5rem;">{{ ripe_total }}</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="py-2">
+                                <span class="badge bg-warning text-dark" style="font-size: 1.1rem; padding: 0.5em 1.2em;">
+                                    <i class="fas fa-circle me-1"></i>Unripe
+                                </span>
+                                <div class="fw-bold mt-1" style="font-size: 1.5rem;">{{ unripe_total }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Daily Statistics Bar Graph -->
+                    <div class="my-4">
+                        <h6 class="text-center text-muted mb-2">Detections Per Day (Last 7 Days)</h6>
+                        <canvas id="dailyStatsBarChart" height="80"></canvas>
+                    </div>
+                    <div class="text-center mt-2">
+                        <i class="fas fa-info-circle text-muted"></i>
+                        <span class="text-muted" style="font-size: 0.95rem;">Ripe and unripe counts are for all detections</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="activity-card card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-clock me-2"></i>Recent Activity
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_detections %}
+                    <div class="activity-list">
+                        {% for detection in recent_detections %}
+                        <div class="activity-item d-flex align-items-center py-2 border-bottom">
+                            <div class="activity-icon me-3">
+                                {% if detection.ripeness == 'ripe' %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% elif detection.ripeness == 'unripe' %}
+                                    <i class="fas fa-clock text-warning"></i>
+                                {% else %}
+                                    <i class="fas fa-question-circle text-secondary"></i>
+                                {% endif %}
+                            </div>
+                            <div class="activity-content flex-grow-1">
+                                <div class="activity-title">
+                                    Detected <strong>Mangosteen</strong> 
+                                    ({{ detection.ripeness|title }})
+                                </div>
+                                <div class="activity-meta text-muted">
+                                    <small>
+                                        <i class="fas fa-calendar me-1"></i>
+                                        {{ detection.timestamp.strftime('%B %d, %Y at %I:%M %p') }}
+                                        <span class="ms-2">
+                                            <i class="fas fa-percentage me-1"></i>
+                                            {{ "%.1f"|format(detection.confidence * 100) }}% confidence
+                                        </span>
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="activity-actions">
+                                <a href="{{ url_for('uploaded_file', filename=detection.image_path) }}" 
+                                   class="btn btn-sm btn-outline-primary" target="_blank">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No recent detections found</p>
+                        <a href="{{ url_for('detect') }}" class="btn btn-primary">
+                            <i class="fas fa-upload me-1"></i>Start Detecting
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.welcome-card {
+    background: linear-gradient(135deg, #34c759 0%, #43ea7f 100%);
+    color: white;
+    border: none;
+}
+
+.welcome-icon {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.stat-card {
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(52, 199, 89, 0.15);
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #34c759;
+    line-height: 1;
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #34c759 0%, #43ea7f 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.time-filters .btn-group {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.time-filters .btn {
+    border-radius: 0;
+    border: 1px solid #34c759;
+    color: #34c759;
+    background: transparent;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s ease;
+}
+
+.time-filters .btn:hover,
+.time-filters .btn-check:checked + .btn {
+    background: #34c759;
+    color: white;
+    border-color: #34c759;
+}
+
+.objects-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.object-item {
+    padding: 0.5rem;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+
+.object-item:hover {
+    background-color: rgba(52, 199, 89, 0.1);
+}
+
+.object-icon {
+    width: 30px;
+    height: 30px;
+    background: rgba(52, 199, 89, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+.object-name {
+    font-weight: 500;
+    color: #333;
+}
+
+.ripeness-bars {
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.ripeness-item {
+    padding: 0.25rem 0;
+}
+
+.ripeness-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.activity-card {
+    border: none;
+}
+
+.activity-card .card-header {
+    background: rgba(52, 199, 89, 0.1);
+    border-bottom: 1px solid rgba(52, 199, 89, 0.2);
+    border-radius: 1.5rem 1.5rem 0 0;
+}
+
+.activity-item {
+    transition: background-color 0.2s ease;
+}
+
+.activity-item:hover {
+    background-color: rgba(52, 199, 89, 0.05);
+}
+
+.activity-item:last-child {
+    border-bottom: none !important;
+}
+
+.activity-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(52, 199, 89, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.activity-title {
+    font-weight: 500;
+    color: #333;
+}
+
+.activity-meta {
+    font-size: 0.85rem;
+}
+
+.activity-actions .btn {
+    border-radius: 8px;
+    padding: 0.25rem 0.5rem;
+}
+
+.progress {
+    background-color: rgba(52, 199, 89, 0.1);
+    border-radius: 10px;
+}
+
+.progress-bar {
+    background: linear-gradient(90deg, #34c759 0%, #43ea7f 100%);
+    border-radius: 10px;
+}
+
+@media (max-width: 768px) {
+    .stat-number {
+        font-size: 2rem;
+    }
+    
+    .time-filters .btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.9rem;
+    }
+    
+    .welcome-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+}
+</style>
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Time filter functionality for stat card
+    const timeFilters = document.querySelectorAll('input[name="timeFilter"]');
+    const statNumber = document.getElementById('total-detection-number');
+    if (statNumber && timeFilters.length) {
+        timeFilters.forEach(filter => {
+            filter.addEventListener('change', function() {
+                let count = 0;
+                switch(this.id) {
+                    case 'today':
+                        count = {{ today_detections }};
+                        break;
+                    case 'week':
+                        count = {{ week_detections }};
+                        break;
+                    case 'month':
+                        count = {{ month_detections }};
+                        break;
+                }
+                animateNumber(statNumber, count);
+            });
+        });
+    }
+    function animateNumber(element, target) {
+        const start = parseInt(element.textContent) || 0;
+        const increment = (target - start) / 20;
+        let current = start;
+        const timer = setInterval(() => {
+            current += increment;
+            if ((increment > 0 && current >= target) || (increment < 0 && current <= target)) {
+                element.textContent = target;
+                clearInterval(timer);
+            } else {
+                element.textContent = Math.floor(current);
+            }
+        }, 30);
+    }
+    // Animate stat cards
+    const statCards = document.querySelectorAll('.stat-card');
+    statCards.forEach((card, index) => {
+        setTimeout(() => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'all 0.6s ease';
+            setTimeout(() => {
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, 100);
+        }, index * 200);
+    });
+    // Animate welcome card
+    const welcomeCard = document.querySelector('.welcome-card');
+    if (welcomeCard) {
+        welcomeCard.style.opacity = '0';
+        welcomeCard.style.transform = 'scale(0.9)';
+        welcomeCard.style.transition = 'all 0.8s ease';
+        setTimeout(() => {
+            welcomeCard.style.opacity = '1';
+            welcomeCard.style.transform = 'scale(1)';
+        }, 300);
+    }
+    // Animate activity items
+    const activityItems = document.querySelectorAll('.activity-item');
+    activityItems.forEach((item, index) => {
+        setTimeout(() => {
+            item.style.opacity = '0';
+            item.style.transform = 'translateX(-20px)';
+            item.style.transition = 'all 0.5s ease';
+            setTimeout(() => {
+                item.style.opacity = '1';
+                item.style.transform = 'translateX(0)';
+            }, 100);
+        }, index * 150);
+    });
+    // Add ripple effect to buttons
+    const buttons = document.querySelectorAll('.btn');
+    buttons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            const ripple = document.createElement('span');
+            const rect = this.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const x = e.clientX - rect.left - size / 2;
+            const y = e.clientY - rect.top - size / 2;
+            ripple.style.width = ripple.style.height = size + 'px';
+            ripple.style.left = x + 'px';
+            ripple.style.top = y + 'px';
+            ripple.classList.add('ripple');
+            this.appendChild(ripple);
+            setTimeout(() => {
+                ripple.remove();
+            }, 600);
+        });
+    });
+    // Add pulse animation to stat icons
+    const statIcons = document.querySelectorAll('.stat-icon');
+    statIcons.forEach(icon => {
+        icon.addEventListener('mouseenter', function() {
+            this.style.animation = 'pulse 0.6s ease-in-out';
+        });
+        icon.addEventListener('animationend', function() {
+            this.style.animation = '';
+        });
+    });
+    // Add CSS for ripple effect
+    const style = document.createElement('style');
+    style.textContent = `
+        .btn {
+            position: relative;
+            overflow: hidden;
+        }
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.6);
+            transform: scale(0);
+            animation: ripple-animation 0.6s linear;
+            pointer-events: none;
+        }
+        @keyframes ripple-animation {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .stat-card {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .welcome-card {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+        .activity-item {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+    `;
+    document.head.appendChild(style);
+    // Auto-refresh dashboard data every 5 minutes
+    setInterval(() => {
+        // You can add AJAX call here to refresh data
+        console.log('Dashboard data refresh interval');
+    }, 300000);
+    // Detection totals for each period
+    const detectionTotals = {
+        today: {{ today_detections }},
+        week: {{ week_detections }},
+        month: {{ month_detections }}
+    };
+    let currentPeriod = 'month';
+    const doughnutCtx = document.getElementById('totalDoughnutChart')?.getContext('2d');
+    const piePeriodLabel = document.getElementById('pie-period-label');
+    // Chart.js plugin for center text
+    const centerTextPlugin = {
+        id: 'centerText',
+        afterDraw(chart) {
+            if (chart.config.options.centerText) {
+                const ctx = chart.ctx;
+                const centerText = chart.config.options.centerText.text;
+                ctx.save();
+                ctx.font = 'bold 2.2rem Arial';
+                ctx.fillStyle = '#34c759';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(centerText, chart.width / 2, chart.height / 2);
+                ctx.restore();
+            }
+        }
+    };
+    let doughnutChart;
+    if (doughnutCtx) {
+        doughnutChart = new Chart(doughnutCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Detections', 'Remaining'],
+                datasets: [{
+                    data: [detectionTotals[currentPeriod], Math.max(0, 100 - detectionTotals[currentPeriod])],
+                    backgroundColor: [
+                        'rgba(52, 199, 89, 0.85)', // green
+                        'rgba(220, 220, 220, 0.3)' // light gray
+                    ],
+                    borderWidth: 1,
+                    cutout: '70%'
+                }]
+            },
+            options: {
+                responsive: false,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: false }
+                },
+                centerText: {
+                    text: detectionTotals[currentPeriod].toString()
+                }
+            },
+            plugins: [centerTextPlugin]
+        });
+    }
+    // Listen for time filter changes
+    document.querySelectorAll('input[name="timeFilter"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            let period = 'month';
+            let label = 'This Month';
+            if (this.id === 'today') { period = 'today'; label = 'Today'; }
+            else if (this.id === 'week') { period = 'week'; label = 'This Week'; }
+            if (doughnutChart) {
+                doughnutChart.data.datasets[0].data = [detectionTotals[period], Math.max(0, 100 - detectionTotals[period])];
+                doughnutChart.options.centerText.text = detectionTotals[period].toString();
+                doughnutChart.update();
+            }
+            if (piePeriodLabel) piePeriodLabel.textContent = label;
+        });
+    });
+    // Bar graph for daily statistics (last 7 days)
+    const dailyCtx = document.getElementById('dailyStatsBarChart')?.getContext('2d');
+    if (dailyCtx) {
+        const dailyStatsBarChart = new Chart(dailyCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ daily_labels|tojson }},
+                datasets: [{
+                    label: 'Detections',
+                    data: {{ daily_counts|tojson }},
+                    backgroundColor: 'rgba(52, 199, 89, 0.7)',
+                    borderRadius: 8,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+{% endblock %} 

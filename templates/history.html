@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Detection History - Fruit Detection App{% endblock %}
+
+{% block content %}
+<div class="row mb-2">
+    <div class="col-12 text-end">
+        <a href="{{ url_for('export_history', **request.args) }}" class="btn btn-outline-primary mb-3">Download</a>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <div id="history-container">
+        <div class="card shadow">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">Detection History</h2>
+                <form class="row gx-2 gy-2 align-items-end justify-content-center mb-3" method="get" action="{{ url_for('history') }}">
+                    <div class="col-auto">
+                        <select name="ripeness" class="form-select">
+                            <option value="all">All Ripeness</option>
+                            <option value="ripe" {% if request.args.get('ripeness') == 'ripe' %}selected{% endif %}>Ripe</option>
+                            <option value="unripe" {% if request.args.get('ripeness') == 'unripe' %}selected{% endif %}>Unripe</option>
+                        </select>
+                    </div>
+                    <div class="col-auto d-flex align-items-center">
+                        <label for="date_from" class="me-1 mb-0">From</label>
+                        <input type="date" id="date_from" name="date_from" class="form-control me-2" value="{{ request.args.get('date_from', '') }}">
+                        <label for="date_to" class="me-1 mb-0">To</label>
+                        <input type="date" id="date_to" name="date_to" class="form-control" value="{{ request.args.get('date_to', '') }}">
+                    </div>
+                    <div class="col-auto d-grid">
+                        <button type="submit" class="btn btn-primary">Filter</button>
+                    </div>
+                    <div class="col-auto d-grid">
+                        <button type="button" class="btn btn-outline-secondary" id="refresh-sessions-btn">
+                            <i class="fas fa-sync-alt me-1"></i>Refresh
+                        </button>
+                    </div>
+                </form>
+                <div class="mb-3 text-center">
+                    <span class="badge bg-success">Ripe: {{ filtered_ripe_count }}</span>
+                    <span class="badge bg-warning text-dark ms-2">Unripe: {{ filtered_unripe_count }}</span>
+                </div>
+                <div id="history-sessions-list">
+                {% if detections %}
+                    {% for detection in detections %}
+                    <div class="history-item">
+                        <div class="row align-items-center">
+                            <div class="col-md-3">
+                                <img src="{{ url_for('static', filename='uploads/' + detection.image_path) }}" 
+                                     alt="Detection Image" 
+                                     class="img-fluid rounded">
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Fruit Type:</strong>
+                                    {% if detection.fruit_type.lower().startswith(detection.ripeness.lower()) and detection.ripeness != 'unknown' %}
+                                        {{ detection.fruit_type|title }}
+                                    {% elif detection.ripeness != 'unknown' %}
+                                        {{ detection.ripeness|title }} {{ detection.fruit_type|title }}
+                                    {% else %}
+                                        {{ detection.fruit_type|title }}
+                                    {% endif %}
+                                </p>
+                                <p class="mb-1"><strong>Confidence:</strong></p>
+                                <div class="progress mb-2" style="height: 20px;">
+                                    <div class="progress-bar {% if detection.confidence >= 0.8 %}bg-success{% elif detection.confidence >= 0.5 %}bg-info{% else %}bg-warning{% endif %}" 
+                                         role="progressbar" 
+                                         style="width: {{ (detection.confidence * 100)|round|int }}%;" 
+                                         aria-valuenow="{{ (detection.confidence * 100)|round|int }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                        {{ "%.1f"|format(detection.confidence * 100) }}%
+                                    </div>
+                                </div>
+                                <div class="mb-1">
+                                    <small><strong>Ripe:</strong> {{ ripe_unripe_counts[detection.id]['ripe'] }} | <strong>Unripe:</strong> {{ ripe_unripe_counts[detection.id]['unripe'] }}</small>
+                                </div>
+                                <p class="mb-0 text-muted">
+                                    <small>Detected on: {{ detection.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                                </p>
+                            </div>
+                            <div class="col-md-3 text-end">
+                                <a href="{{ url_for('static', filename='uploads/' + detection.image_path) }}" 
+                                   class="btn btn-outline-primary btn-sm" 
+                                   target="_blank">View Image</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <p class="text-muted">No detection history found.</p>
+                        <a href="{{ url_for('detect') }}" class="btn btn-primary">Start Detecting</a>
+                    </div>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('click', function(event) {
+    if (event.target && (event.target.id === 'refresh-sessions-btn' || event.target.closest('#refresh-sessions-btn'))) {
+        event.preventDefault();
+        // Reset filter fields to default
+        document.querySelector('select[name="ripeness"]').value = 'all';
+        document.getElementById('date_from').value = '';
+        document.getElementById('date_to').value = '';
+        // Always reload the page to ensure full reset
+        window.location = window.location.pathname;
+    }
+});
+</script>
+{% endblock %} 
